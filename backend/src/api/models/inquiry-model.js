@@ -1,0 +1,148 @@
+const mongoose = require("mongoose");
+
+const inquirySchema = new mongoose.Schema(
+  {
+    /* 🔹 Core References */
+
+    property: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+      required: true,
+      index: true,
+    },
+
+    buyer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    agent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+
+    /* 🔹 Buyer Contact Snapshot */
+
+    buyerName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    buyerEmail: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    buyerPhone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    /* 🔹 Inquiry Content */
+
+    message: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    response: {
+      type: String,
+      default: "",
+    },
+
+    /* 🔹 Lead Lifecycle */
+
+    status: {
+      type: String,
+      enum: [
+        "Pending",
+        "Seen",
+        "Responded",
+        "Visit Scheduled",
+        "Negotiation",
+        "Closed"
+      ],
+      default: "Pending",
+      index: true,
+    },
+
+    /* 🔹 Visit Scheduling */
+
+    visitDate: {
+      type: Date,
+      default: null,
+    },
+
+    visitTime: {
+      type: String,
+      default: null,
+    },
+
+    /* 🔹 Response Metadata */
+
+    respondedAt: {
+      type: Date,
+      default: null,
+    },
+
+    responseBy: {
+      type: String,
+      enum: ["Seller", "Agent"],
+      default: null,
+    },
+
+    /* 🔹 Inquiry Source (analytics later) */
+
+    source: {
+      type: String,
+      enum: ["Marketplace", "AgentShare", "External"],
+      default: "Marketplace",
+    },
+
+    /* 🔹 Archival (for agent lead cleanup) */
+
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+/* 🔹 Prevent duplicate inquiries from same buyer on same property */
+
+inquirySchema.index(
+  { property: 1, buyer: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { buyer: { $type: "objectId" } }
+  }
+);
+
+/* 🔹 Agent dashboard query optimization */
+
+inquirySchema.index({ agent: 1, status: 1 });
+
+/* 🔹 Seller dashboard optimization */
+
+inquirySchema.index({ seller: 1, status: 1 });
+
+module.exports = mongoose.model("Inquiry", inquirySchema);

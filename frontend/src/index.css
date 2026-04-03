@@ -1,0 +1,24 @@
+@import "tailwindcss";
+/* Disable browser password reveal icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}
+
+
+select option {
+  background-color: #0f172a; /* slate-900 */
+  color: white;
+}
+
+select option:hover,
+select option:checked {
+  background-color: #7c3aed; /* purple */
+  color: white;
+}
