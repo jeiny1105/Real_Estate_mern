@@ -7,7 +7,6 @@ const PERMISSIONS = require("../../config/permissions");
 
 const controller = require("./property-controller");
 const upload = require("../../middlewares/upload-middleware");
-
 const validateRequest = require("../../middlewares/validateRequest-middleware");
 
 const {
@@ -20,56 +19,64 @@ const {
    🔹 PUBLIC ROUTES
 ========================================================= */
 
-// Get All Properties
+// Get all properties
 router.get("/", controller.getProperties);
+
+// Suggestions
 router.get("/suggestions", controller.getSuggestions);
 
+// Get single property (PUBLIC)
+router.get(
+  "/:id",
+  validateRequest(idParamSchema, "params"),
+  controller.getPropertyById
+);
+
 /* =========================================================
-   🔐 AUTH REQUIRED BELOW
+   🔐 SELLER ROUTES (AUTH + PERMISSIONS)
 ========================================================= */
 
-router.use(authenticate);
-
-/* =========================================================
-   🏠 SELLER ROUTES
-========================================================= */
-
-// 🔥 IMPORTANT: KEEP THIS ABOVE "/:id"
+// Get my properties
 router.get(
   "/my",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_READ),
   controller.getMyProperties
 );
 
-// ✅ Create Property
+// Create property
 router.post(
   "/",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_CREATE),
   upload.array("images", 5),
   validateRequest(createPropertySchema),
   controller.createProperty
 );
 
-// ✅ Update Property
+// Update property
 router.put(
   "/:id",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_UPDATE),
   validateRequest(idParamSchema, "params"),
   validateRequest(updatePropertySchema),
   controller.updateProperty
 );
 
-// ✅ Soft Delete
+// Delete property
 router.delete(
   "/:id",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_DELETE),
   validateRequest(idParamSchema, "params"),
   controller.deleteProperty
 );
 
-// Change Listing Status
+// Change listing status
 router.patch(
   "/:id/status",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_UPDATE),
   validateRequest(idParamSchema, "params"),
   controller.updatePropertyStatus
@@ -79,31 +86,22 @@ router.patch(
    🛡 ADMIN ROUTES
 ========================================================= */
 
-// Approve / Reject
+// Approve / Reject property
 router.patch(
   "/:id/approval",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_APPROVE),
   validateRequest(idParamSchema, "params"),
   controller.updateApprovalStatus
 );
 
-// Featured
+// Toggle featured
 router.patch(
   "/:id/feature",
+  authenticate,
   authorizePermission(PERMISSIONS.PROPERTIES_FEATURE),
   validateRequest(idParamSchema, "params"),
   controller.toggleFeatured
-);
-
-/* =========================================================
-   🔹 PUBLIC (KEEP LAST)
-========================================================= */
-
-// 🔥 ALWAYS LAST (VERY IMPORTANT)
-router.get(
-  "/:id",
-  validateRequest(idParamSchema, "params"),
-  controller.getPropertyById
 );
 
 module.exports = router;

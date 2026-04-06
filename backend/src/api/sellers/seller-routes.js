@@ -2,20 +2,27 @@ const express = require("express");
 const router = express.Router();
 
 const sellerController = require("./seller-controller");
-const authMiddleware = require("../../middlewares/auth-middleware");
+const authenticate = require("../../middlewares/auth-middleware");
+const validateRequest = require("../../middlewares/validateRequest-middleware");
+
+/* 🔹 Validation */
+const {
+  updateSellerProfileSchema,
+} = require("../../validations/seller-validation");
 
 /**
  * Seller Profile
  */
 router.get(
   "/me",
-  authMiddleware,
+  authenticate,
   sellerController.getMyProfile
 );
 
 router.patch(
   "/me",
-  authMiddleware,
+  authenticate,
+  validateRequest(updateSellerProfileSchema),
   sellerController.updateMyProfile
 );
 

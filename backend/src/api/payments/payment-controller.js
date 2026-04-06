@@ -17,10 +17,6 @@ const AppError = require("../../utils/app-error");
 const createSellerOrder = asyncHandler(async (req, res) => {
   const { subscriptionPlanId } = req.body;
 
-  if (!subscriptionPlanId) {
-    throw new AppError("Subscription plan is required", 400);
-  }
-
   const orderData = await paymentService.createOrder({
     subscriptionPlanId,
     role: "Seller",
@@ -37,10 +33,6 @@ const createSellerOrder = asyncHandler(async (req, res) => {
  */
 const createAgentOrder = asyncHandler(async (req, res) => {
   const { subscriptionPlanId } = req.body;
-
-  if (!subscriptionPlanId) {
-    throw new AppError("Subscription plan is required", 400);
-  }
 
   const orderData = await paymentService.createOrder({
     subscriptionPlanId,
@@ -64,16 +56,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
     subscriptionPlanId,
   } = req.body;
 
-  if (
-    !razorpay_order_id ||
-    !razorpay_payment_id ||
-    !razorpay_signature ||
-    !subscriptionPlanId
-  ) {
-    throw new AppError("Incomplete payment verification data", 400);
-  }
-
-  // 1️⃣ Verify signature
+  /* 🔐 Verify signature */
   const isValid = paymentService.verifySignature({
     razorpay_order_id,
     razorpay_payment_id,
@@ -84,7 +67,21 @@ const verifyPayment = asyncHandler(async (req, res) => {
     throw new AppError("Invalid payment signature", 400);
   }
 
-  // 2️⃣ Fetch plan
+  const userId = req.user.id;
+
+  /* 🔁 Prevent duplicate payment */
+  const existingPayment = await Payment.findOne({
+    transactionId: razorpay_payment_id,
+  });
+
+  if (existingPayment) {
+    return res.status(200).json({
+      success: true,
+      message: "Payment already processed",
+    });
+  }
+
+  /* 🔍 Fetch plan */
   const plan = await SubscriptionPlan.findOne({
     _id: subscriptionPlanId,
     status: "Active",
@@ -95,16 +92,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
     throw new AppError("Subscription plan not found or inactive", 404);
   }
 
-  const userId = req.user.id;
-
-  // 3️⃣ Calculate subscription period
+  /* 📅 Calculate subscription period */
   const startDate = new Date();
   const expiryDate = new Date();
   expiryDate.setDate(
     startDate.getDate() + plan.pricing.durationInDays
   );
 
-  // 4️⃣ Create Payment record
+  /* 💾 Create Payment */
   const payment = await Payment.create({
     user: userId,
     userRole: req.user.role,
@@ -119,8 +114,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
     subscriptionExpiry: expiryDate,
   });
 
+  /* 🔍 Fetch user */
   const user = await User.findById(userId);
 
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  /* 🧾 Generate invoice */
   const invoice = await invoiceService.generateInvoice(
     payment,
     user,
@@ -132,7 +133,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
 
   await payment.save();
 
-  // 5️⃣ Activate subscription
+  /* 🚀 Activate subscription */
   await subscriptionService.activateSubscription(
     userId,
     subscriptionPlanId
@@ -144,8 +145,9 @@ const verifyPayment = asyncHandler(async (req, res) => {
   });
 });
 
-/** Razorpay Webhook  */
-
+/**
+ * Razorpay Webhook
+ */
 const razorpayWebhook = asyncHandler(async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -153,7 +155,7 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
 
   const expectedSignature = crypto
     .createHmac("sha256", secret)
-    .update(req.body)
+    .update(req.body.toString()) // ✅ FIXED
     .digest("hex");
 
   if (signature !== expectedSignature) {
@@ -167,8 +169,9 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
   res.status(200).json({ received: true });
 });
 
-/** Download Invoice */
-
+/**
+ * Download Invoice
+ */
 const downloadInvoice = asyncHandler(async (req, res) => {
   const { paymentId } = req.params;
 
@@ -198,8 +201,9 @@ const downloadInvoice = asyncHandler(async (req, res) => {
   res.download(filePath, `${payment.invoiceNumber}.pdf`);
 });
 
-/** Get current user's payments */
-
+/**
+ * Get My Payments
+ */
 const getMyPayments = asyncHandler(async (req, res) => {
   const payments = await Payment.find({
     user: req.user.id,

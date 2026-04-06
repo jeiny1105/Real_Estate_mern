@@ -1,6 +1,6 @@
 const Joi = require("joi");
 
-/* 🔹 Validate propertyId param */
+/* 🔹 Property ID param */
 const propertyIdParamSchema = Joi.object({
   propertyId: Joi.string()
     .hex()
@@ -9,10 +9,15 @@ const propertyIdParamSchema = Joi.object({
     .messages({
       "string.hex": "Invalid property ID",
       "string.length": "Invalid property ID length",
-      "any.required": "Property ID is required",
     }),
+});
+
+/* 🔹 Reject reason */
+const rejectPropertySchema = Joi.object({
+  reason: Joi.string().min(3).optional(),
 });
 
 module.exports = {
   propertyIdParamSchema,
+  rejectPropertySchema,
 };

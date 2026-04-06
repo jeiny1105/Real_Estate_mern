@@ -3,15 +3,23 @@ const router = express.Router();
 
 const authenticate = require("../../middlewares/auth-middleware");
 const authorizePermission = require("../../middlewares/permission-middleware");
+const validateRequest = require("../../middlewares/validateRequest-middleware");
+
 const PERMISSIONS = require("../../config/permissions");
 
 const controller = require("./subscriptionPlan-controller");
 
+/* 🔹 Validation */
+const {
+  idParamSchema,
+  createPlanSchema,
+  updatePlanSchema,
+} = require("../../validations/subscriptionPlan-validation");
+
 /* =====================================================
-   🔓 SELLER  DASHBOARD ROUTE
+   🔓 AVAILABLE PLANS (USER)
 ===================================================== */
 
-// Get plans available for logged-in user role
 router.get(
   "/available",
   authenticate,
@@ -19,12 +27,12 @@ router.get(
 );
 
 /* =====================================================
-   🔐 ADMIN ROUTES (Protected)
+   🔐 ADMIN ROUTES
 ===================================================== */
 
 router.use(authenticate);
 
-// Read plans
+/* 🔹 READ */
 router.get(
   "/",
   authorizePermission(PERMISSIONS.SUBSCRIPTIONS_READ),
@@ -40,31 +48,40 @@ router.get(
 router.get(
   "/:id",
   authorizePermission(PERMISSIONS.SUBSCRIPTIONS_READ),
+  validateRequest(idParamSchema, "params"),
   controller.getPlanById
 );
 
-// Manage plans
+/* 🔹 CREATE */
 router.post(
   "/",
   authorizePermission(PERMISSIONS.SUBSCRIPTIONS_CREATE),
+  validateRequest(createPlanSchema),
   controller.createPlan
 );
 
+/* 🔹 UPDATE */
 router.put(
   "/:id",
   authorizePermission(PERMISSIONS.SUBSCRIPTIONS_UPDATE),
+  validateRequest(idParamSchema, "params"),
+  validateRequest(updatePlanSchema),
   controller.updatePlan
 );
 
+/* 🔹 DELETE */
 router.delete(
   "/:id",
   authorizePermission(PERMISSIONS.SUBSCRIPTIONS_CANCEL),
+  validateRequest(idParamSchema, "params"),
   controller.deletePlan
 );
 
+/* 🔹 TOGGLE STATUS */
 router.patch(
   "/:id/toggle-status",
   authorizePermission(PERMISSIONS.SUBSCRIPTIONS_UPDATE),
+  validateRequest(idParamSchema, "params"),
   controller.togglePlanStatus
 );
 

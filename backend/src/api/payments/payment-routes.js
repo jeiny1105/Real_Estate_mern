@@ -9,6 +9,9 @@ const paymentController = require("./payment-controller");
 
 const validateRequest = require("../../middlewares/validateRequest-middleware");
 
+/* 🔥 IMPORT LIMITER */
+const { paymentLimiter } = require("../../middlewares/rate-limit-middleware");
+
 const {
   createOrderSchema,
   verifyPaymentSchema,
@@ -26,6 +29,7 @@ router.use(authenticate);
  */
 router.post(
   "/seller/create-order",
+  paymentLimiter, // 🔥 ADD THIS
   authorizePermission(PERMISSIONS.PAYMENTS_CREATE),
   validateRequest(createOrderSchema),
   paymentController.createSellerOrder
@@ -36,6 +40,7 @@ router.post(
  */
 router.post(
   "/agent/create-order",
+  paymentLimiter, // 🔥 ADD THIS
   authorizePermission(PERMISSIONS.PAYMENTS_CREATE),
   validateRequest(createOrderSchema),
   paymentController.createAgentOrder
@@ -46,6 +51,7 @@ router.post(
  */
 router.post(
   "/verify",
+  paymentLimiter, // 🔥 ADD THIS
   authorizePermission(PERMISSIONS.PAYMENTS_CREATE),
   validateRequest(verifyPaymentSchema),
   paymentController.verifyPayment
@@ -54,10 +60,7 @@ router.post(
 /**
  * Get current user's payment history
  */
-router.get(
-  "/my",
-  paymentController.getMyPayments
-);
+router.get("/my", paymentController.getMyPayments);
 
 /**
  * Download Invoice

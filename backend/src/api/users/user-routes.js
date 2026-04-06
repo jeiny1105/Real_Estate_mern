@@ -1,15 +1,23 @@
 const express = require("express");
 const router = express.Router();
 
-const { getMyProfile } = require("./user-controller");
+const {
+  getMyProfile,
+  updateMyProfile,
+} = require("./user-controller");
+
 const authenticate = require("../../middlewares/auth-middleware");
 const authorizePermission = require("../../middlewares/permission-middleware");
+const validateRequest = require("../../middlewares/validateRequest-middleware");
+
 const PERMISSIONS = require("../../config/permissions");
 
+const {
+  updateProfileSchema,
+} = require("../../validations/user-validation");
+
 /**
- * @desc   Admin-only test route
- * @route  GET /api/v1/users/admin-test
- * @access Admin only
+ * Admin test
  */
 router.get(
   "/admin-test",
@@ -24,8 +32,18 @@ router.get(
 );
 
 /**
- * Protected route example
+ * Get profile
  */
 router.get("/me", authenticate, getMyProfile);
+
+/**
+ * ✅ CLEAN UPDATE PROFILE
+ */
+router.patch(
+  "/me",
+  authenticate,
+  validateRequest(updateProfileSchema),
+  updateMyProfile
+);
 
 module.exports = router;

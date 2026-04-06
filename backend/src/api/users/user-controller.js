@@ -15,6 +15,21 @@ const getMyProfile = asyncHandler(async (req, res) => {
   });
 });
 
+const updateMyProfile = asyncHandler(async (req, res) => {
+  const updatedUser = await userService.updateMe(
+    req.user.id,
+    req.body,
+    req.file || null
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    data: updatedUser,
+  });
+});
+
 module.exports = {
   getMyProfile,
+  updateMyProfile, // ✅ ADD THIS
 };

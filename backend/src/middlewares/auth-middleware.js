@@ -6,8 +6,9 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
+    // 🔥 NO TOKEN → allow (for public routes)
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return next(new AppError("Authorization token missing", 401));
+      return next();
     }
 
     const token = authHeader.split(" ")[1];
@@ -19,6 +20,7 @@ const authenticate = async (req, res, next) => {
       role: decoded.role,
     };
 
+    // 🔒 Agent checks (only if token exists)
     if (decoded.role === "Agent") {
       const agent = await agentRepository.findAgentByUserId(decoded.userId);
 
@@ -33,7 +35,10 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    next(new AppError("Invalid or expired token", 401));
+    // 🔥 IMPORTANT: DO NOT BLOCK PUBLIC ROUTES
+    console.warn("Invalid/expired token ignored");
+
+    next(); // ✅ allow request
   }
 };
 

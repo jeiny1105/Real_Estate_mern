@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../app/apiClient";
+import { useAuth } from "../../context/AuthContext";
 import {
   FaSearch,
   FaFilter,
@@ -72,8 +73,12 @@ const Properties = () => {
     }
   }, []);
 
-  useEffect(() => {
+  const { user } = useAuth();
+
+useEffect(() => {
   const fetchWishlist = async () => {
+    if (!user) return; // ✅ STOP if not logged in
+
     try {
       const res = await api.get("/wishlist");
       const ids = res.data.data.map((item) => item._id);
@@ -84,7 +89,8 @@ const Properties = () => {
   };
 
   fetchWishlist();
-}, []);
+}, [user]);
+
 
 const handleWishlistToggle = (propertyId, isAdding) => {
   setWishlistIds((prev) => {

@@ -44,6 +44,16 @@ const otpLimiter = rateLimit({
   }
 });
 
+/* 💰 PAYMENT LIMITER */
+const paymentLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 mins
+  max: 20,
+  message: {
+    success: false,
+    message: "Too many payment requests. Please try later.",
+  },
+});
+
 /* INQUIRY LIMITER */
 
 const inquiryLimiter = rateLimit({
@@ -60,5 +70,6 @@ module.exports = {
   authLimiter,
   speedLimiter,
   otpLimiter,
+  paymentLimiter,
   inquiryLimiter
 };

@@ -3,48 +3,57 @@ const router = express.Router();
 
 const authenticate = require("../../middlewares/auth-middleware");
 const authorizePermission = require("../../middlewares/permission-middleware");
+const validateRequest = require("../../middlewares/validateRequest-middleware");
+
 const PERMISSIONS = require("../../config/permissions");
 
 const subscriptionController = require("./subscription-controller");
 
-// Protect all subscription routes
+/* 🔹 Validation */
+const {
+  initiateUpgradeSchema,
+  verifyUpgradeSchema,
+  emptySchema,
+} = require("../../validations/subscription-validation");
+
+/* 🔐 Protect all routes */
 router.use(authenticate);
 
 /**
  * Initiate Upgrade
- * POST /api/v1/subscription/upgrade
  */
 router.post(
   "/upgrade",
   authorizePermission(PERMISSIONS.PAYMENTS_CREATE),
+  validateRequest(initiateUpgradeSchema),
   subscriptionController.initiateUpgrade
 );
 
 /**
  * Verify Upgrade Payment
- * POST /api/v1/subscription/upgrade/verify
  */
 router.post(
   "/upgrade/verify",
   authorizePermission(PERMISSIONS.PAYMENTS_CREATE),
+  validateRequest(verifyUpgradeSchema),
   subscriptionController.verifyUpgradePayment
 );
 
 /**
  * Enable Auto-Renew
- * POST /api/v1/subscription/auto-renew/enable
  */
 router.post(
   "/auto-renew/enable",
+  validateRequest(emptySchema),
   subscriptionController.enableAutoRenew
 );
 
 /**
  * Cancel Subscription
- * POST /api/v1/subscription/cancel
  */
 router.post(
   "/cancel",
+  validateRequest(emptySchema),
   subscriptionController.cancelSubscription
 );
 

@@ -14,10 +14,6 @@ const initiateUpgrade = asyncHandler(async (req, res) => {
   const { newPlanId } = req.body;
   const userId = req.user.id;
 
-  if (!newPlanId) {
-    throw new AppError("New plan ID is required", 400);
-  }
-
   const upgradeData = await subscriptionService.initiateUpgrade(
     userId,
     newPlanId
@@ -48,15 +44,7 @@ const verifyUpgradePayment = asyncHandler(async (req, res) => {
     newPlanId,
   } = req.body;
 
-  if (
-    !razorpay_order_id ||
-    !razorpay_payment_id ||
-    !razorpay_signature ||
-    !newPlanId
-  ) {
-    throw new AppError("Incomplete upgrade verification data", 400);
-  }
-
+  /* 🔐 Verify Razorpay signature */
   const isValid = paymentService.verifySignature({
     razorpay_order_id,
     razorpay_payment_id,
@@ -69,7 +57,7 @@ const verifyUpgradePayment = asyncHandler(async (req, res) => {
 
   const userId = req.user.id;
 
-  /* Prevent duplicate */
+  /* 🔁 Prevent duplicate payment */
   const existingPayment = await Payment.findOne({
     transactionId: razorpay_payment_id,
   });
@@ -81,7 +69,7 @@ const verifyUpgradePayment = asyncHandler(async (req, res) => {
     });
   }
 
-  /* Recalculate proration */
+  /* 🔄 Recalculate proration (security) */
   const upgradeData = await subscriptionService.initiateUpgrade(
     userId,
     newPlanId
@@ -89,7 +77,7 @@ const verifyUpgradePayment = asyncHandler(async (req, res) => {
 
   const payableAmount = upgradeData.payableAmount;
 
-  /* Create payment */
+  /* 💾 Create payment record */
   const payment = await Payment.create({
     user: userId,
     userRole: req.user.role,
@@ -104,9 +92,15 @@ const verifyUpgradePayment = asyncHandler(async (req, res) => {
     subscriptionExpiry: null,
   });
 
+  /* 🔍 Fetch user & plan */
   const user = await User.findById(userId);
   const plan = await SubscriptionPlan.findById(newPlanId);
 
+  if (!user || !plan) {
+    throw new AppError("User or Plan not found", 404);
+  }
+
+  /* 🧾 Generate invoice */
   const invoice = await invoiceService.generateInvoice(
     payment,
     user,
@@ -118,6 +112,7 @@ const verifyUpgradePayment = asyncHandler(async (req, res) => {
 
   await payment.save();
 
+  /* 🚀 Complete upgrade */
   await subscriptionService.completeUpgrade(userId, newPlanId);
 
   return res.status(200).json({
@@ -149,7 +144,7 @@ const enableAutoRenew = asyncHandler(async (req, res) => {
 
   const result = await subscriptionService.enableAutoRenew(userId);
 
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     message: result.message,
     expiryDate: result.expiryDate,
