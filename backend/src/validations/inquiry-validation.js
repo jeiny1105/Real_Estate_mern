@@ -21,7 +21,15 @@ const createInquirySchema = Joi.object({
 /* 🔹 Update Status */
 const updateStatusSchema = Joi.object({
   status: Joi.string()
-    .valid("Pending", "Responded", "Closed", "Visit Scheduled")
+    .valid(
+      "Pending",
+      "Seen",
+      "Responded",
+      "Visit Scheduled",
+      "Negotiation",
+      "Closed Won",
+      "Closed Lost"
+    )
     .required(),
 });
 
@@ -32,8 +40,19 @@ const respondSchema = Joi.object({
 
 /* 🔹 Schedule Visit */
 const scheduleVisitSchema = Joi.object({
-  visitDate: Joi.date().required(),
-  visitTime: Joi.string().required(),
+  visitDate: Joi.date()
+    .min("now")
+    .required()
+    .messages({
+      "date.min": "Visit date cannot be in the past",
+    }),
+
+  visitTime: Joi.string()
+  .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/) // HH:mm format
+  .required()
+  .messages({
+    "string.pattern.base": "Time must be in HH:mm format",
+  }),
 });
 
 /* 🔹 Send Message */

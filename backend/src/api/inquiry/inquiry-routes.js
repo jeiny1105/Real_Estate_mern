@@ -78,6 +78,12 @@ router.patch(
 router.get("/buyer/inquiries", inquiryController.getBuyerInquiries);
 
 router.get(
+  "/properties/:id/my",
+  validateRequest(idParamSchema, "params"),
+  inquiryController.getBuyerInquiryForProperty
+);
+
+router.get(
   "/buyer/inquiries/:id/messages",
   validateRequest(idParamSchema, "params"),
   inquiryController.getInquiryMessages

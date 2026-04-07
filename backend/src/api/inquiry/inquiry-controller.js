@@ -37,7 +37,29 @@ const getBuyerInquiries = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
+    results: inquiries.length,
     data: inquiries,
+  });
+});
+
+/* =========================================================
+   🔹 GET BUYER INQUIRY FOR PROPERTY
+========================================================= */
+const getBuyerInquiryForProperty = asyncHandler(async (req, res) => {
+  const propertyId = req.params.id;
+
+  if (!req.user) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const inquiry = await inquiryService.getBuyerInquiryForProperty(
+    propertyId,
+    req.user.id
+  );
+
+  res.status(200).json({
+    success: true,
+    data: inquiry,
   });
 });
 
@@ -63,6 +85,10 @@ const updateLeadStatus = asyncHandler(async (req, res) => {
   const inquiryId = req.params.id;
   const { status } = req.body;
 
+  if (!status) {
+    throw new AppError("Status is required", 400);
+  }
+
   const updated = await inquiryService.updateLeadStatus(
     inquiryId,
     status,
@@ -71,7 +97,7 @@ const updateLeadStatus = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: "Lead status updated",
+    message: `Lead status updated to ${status}`,
     data: updated,
   });
 });
@@ -100,9 +126,9 @@ const respondToInquiry = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * 🔹 GET MESSAGES
- */
+/* =========================================================
+   🔹 GET MESSAGES
+========================================================= */
 const getInquiryMessages = asyncHandler(async (req, res) => {
   const inquiryId = req.params.id;
 
@@ -143,7 +169,9 @@ const scheduleVisit = asyncHandler(async (req, res) => {
   });
 });
 
-/* Buyer send message */
+/* =========================================================
+   🔹 SEND MESSAGE (Buyer / Agent Chat)
+========================================================= */
 const sendMessage = asyncHandler(async (req, res) => {
   const inquiryId = req.params.id;
   const { text } = req.body;
@@ -160,6 +188,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
+    message: "Message sent successfully",
     data: message,
   });
 });
@@ -167,6 +196,7 @@ const sendMessage = asyncHandler(async (req, res) => {
 module.exports = {
   createInquiry,
   getBuyerInquiries,
+  getBuyerInquiryForProperty,
   getAgentLeads,
   updateLeadStatus,
   respondToInquiry,

@@ -33,6 +33,24 @@ const PropertyDetails = () => {
   const [inquiry, setInquiry] = useState(null);
   const [checkingInquiry, setCheckingInquiry] = useState(true);
 
+  const stages = (() => {
+  const base = [
+    "Pending",
+    "Seen",
+    "Responded",
+    "Visit Scheduled",
+    "Negotiation",
+  ];
+
+  if (inquiry?.status === "Closed Won") {
+    base.push("Closed Won");
+  } else if (inquiry?.status === "Closed Lost") {
+    base.push("Closed Lost");
+  }
+
+  return base;
+})();
+
   const [form, setForm] = useState({
     buyerName: "",
     buyerEmail: "",
@@ -56,10 +74,19 @@ const PropertyDetails = () => {
       setCheckingInquiry(false);
       return;
     }
+
     try {
-      const res = await api.get(`/inquiries/properties/${id}/my`);
-      setInquiry(res.data.data);
-    } catch {
+      const res = await api.get(`/inquiries/buyer/inquiries`);
+
+      const found = res.data.data.find(
+        (inq) =>
+          String(inq.property?._id || inq.property) === String(id)
+      );
+
+      setInquiry(found || null);
+
+    } catch (err) {
+      console.error("Failed to fetch inquiry", err);
       setInquiry(null);
     } finally {
       setCheckingInquiry(false);
@@ -72,8 +99,8 @@ const PropertyDetails = () => {
   }, [id, user]);
 
   const images = property?.images?.length > 0
-      ? property.images.map(img => `http://localhost:3000/uploads/${img}`)
-      : ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80"];
+    ? property.images.map(img => `http://localhost:3000/uploads/${img}`)
+    : ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80"];
 
   const nextImage = () => setCurrentImage(prev => (prev + 1) % images.length);
   const prevImage = () => setCurrentImage(prev => (prev === 0 ? images.length - 1 : prev - 1));
@@ -83,9 +110,13 @@ const PropertyDetails = () => {
   };
 
   const sendInquiry = async () => {
+    if (property.status === "Sold") {
+      alert("This property is already sold");
+      return;
+    }
     try {
       setSending(true);
-      const payload = user 
+      const payload = user
         ? { buyerName: user.name, buyerEmail: user.email, buyerPhone: user.phone || "", message: form.message }
         : form;
 
@@ -118,9 +149,11 @@ const PropertyDetails = () => {
   const isPlot = property.propertyType === "Plot";
   const isCommercial = property.propertyType === "Commercial";
 
+  const isSold = property.status === "Sold";
+
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-slate-900 font-sans antialiased pb-24">
-      
+
       {/* --- TOP NAV --- */}
       <div className="max-w-7xl mx-auto px-6 pt-32 mb-8">
         <button
@@ -141,7 +174,7 @@ const PropertyDetails = () => {
             alt="Property"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          
+
           <button onClick={prevImage} className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-md p-5 rounded-full shadow-lg hover:bg-blue-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
             <FaChevronLeft />
           </button>
@@ -161,9 +194,8 @@ const PropertyDetails = () => {
             <div
               key={index}
               onClick={() => setCurrentImage(index)}
-              className={`relative flex-shrink-0 h-24 w-40 rounded-[20px] overflow-hidden cursor-pointer border-2 transition-all ${
-                currentImage === index ? "border-blue-600 scale-95 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
-              }`}
+              className={`relative flex-shrink-0 h-24 w-40 rounded-[20px] overflow-hidden cursor-pointer border-2 transition-all ${currentImage === index ? "border-blue-600 scale-95 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                }`}
             >
               <img src={img} className="w-full h-full object-cover" alt="Thumbnail" />
             </div>
@@ -173,12 +205,24 @@ const PropertyDetails = () => {
 
       {/* --- CONTENT GRID --- */}
       <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-16 mt-16">
-        
+
         {/* LEFT COLUMN */}
         <div className="lg:col-span-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 mb-6">
-            <MdVerified className="text-sm" />
-            <span className="text-[10px] font-black uppercase tracking-widest italic">{property.propertyType}</span>
+          <div className="flex items-center gap-3 mb-6">
+
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600">
+              <MdVerified className="text-sm" />
+              <span className="text-[10px] font-black uppercase tracking-widest italic">
+                {property.propertyType}
+              </span>
+            </div>
+
+            {isSold && (
+              <span className="px-3 py-1 rounded-full bg-red-100 text-red-600 text-[10px] font-black uppercase tracking-widest">
+                Sold
+              </span>
+            )}
+
           </div>
 
           <h1 className="text-5xl md:text-6xl font-light tracking-tight text-slate-900 mb-6 leading-tight">
@@ -196,23 +240,23 @@ const PropertyDetails = () => {
           <div className="grid grid-cols-3 gap-8 py-12 border-y border-slate-100 mb-16">
             {isResidential && (
               <>
-                <SpecItem icon={<FaBed />} label="Bedrooms" value={property.residential?.bedrooms}/>
-                <SpecItem icon={<FaBath />} label="Bathrooms" value={property.residential?.bathrooms}/>
-                <SpecItem icon={<FaRulerCombined />} label="Living Area" value={`${property.residential?.builtUpArea} sqft`}/>
+                <SpecItem icon={<FaBed />} label="Bedrooms" value={property.residential?.bedrooms} />
+                <SpecItem icon={<FaBath />} label="Bathrooms" value={property.residential?.bathrooms} />
+                <SpecItem icon={<FaRulerCombined />} label="Living Area" value={`${property.residential?.builtUpArea} sqft`} />
               </>
             )}
             {isPlot && (
               <>
-                <SpecItem icon={<FaRulerCombined />} label="Total Space" value={property.land?.plotArea}/>
-                <SpecItem icon={<FaTree />} label="Orientation" value={property.land?.facing}/>
-                <SpecItem icon={<FaBuilding />} label="Zoning" value={property.land?.zoningType}/>
+                <SpecItem icon={<FaRulerCombined />} label="Total Space" value={property.land?.plotArea} />
+                <SpecItem icon={<FaTree />} label="Orientation" value={property.land?.facing} />
+                <SpecItem icon={<FaBuilding />} label="Zoning" value={property.land?.zoningType} />
               </>
             )}
             {isCommercial && (
               <>
-                <SpecItem icon={<FaRulerCombined />} label="Internal Size" value={property.commercial?.areaSize}/>
-                <SpecItem icon={<FaBuilding />} label="Total Levels" value={property.commercial?.floors}/>
-                <SpecItem icon={<FaCar />} label="Parking" value={property.commercial?.parkingSpaces}/>
+                <SpecItem icon={<FaRulerCombined />} label="Internal Size" value={property.commercial?.areaSize} />
+                <SpecItem icon={<FaBuilding />} label="Total Levels" value={property.commercial?.floors} />
+                <SpecItem icon={<FaCar />} label="Parking" value={property.commercial?.parkingSpaces} />
               </>
             )}
           </div>
@@ -238,7 +282,12 @@ const PropertyDetails = () => {
                     <h3 className="font-bold text-xl">Application Status</h3>
                     <p className="text-sm text-slate-400">Reference ID: {inquiry._id.slice(-6).toUpperCase()}</p>
                   </div>
-                  <span className={`ml-auto px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${inquiry.status === 'Resolved' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                  <span className={`ml-auto px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${inquiry.status === "Closed Won"
+                    ? "bg-green-100 text-green-600"
+                    : inquiry.status === "Closed Lost"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-blue-100 text-blue-600"
+                    }`}>
                     {inquiry.status}
                   </span>
                 </div>
@@ -256,6 +305,34 @@ const PropertyDetails = () => {
                   )}
                 </div>
 
+                {/* 🔥 LEAD PIPELINE */}
+                <div className="mt-8">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">
+                    Progress
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 text-xs font-bold">
+
+
+                    {stages.map((stage, index) => {
+                      const currentIndex = Math.max(0, stages.indexOf(inquiry.status));
+
+                      return (
+                        <span
+                          key={stage}
+                          className={`px-2 py-1 rounded ${index <= currentIndex
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 text-slate-400"
+                            }`}
+                        >
+                          {stage}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                </div>
+
                 {inquiry.visitDate && (
                   <div className="mt-8 pt-8 border-t border-slate-50 flex flex-wrap gap-8">
                     <div className="flex items-center gap-3">
@@ -271,6 +348,14 @@ const PropertyDetails = () => {
               </div>
             </section>
           )}
+
+          {!inquiry && !checkingInquiry && (
+            <section className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-xl shadow-slate-100 text-center">
+              <p className="text-sm text-slate-400 font-medium">
+                You have not made an inquiry for this property yet.
+              </p>
+            </section>
+          )}
         </div>
 
         {/* RIGHT COLUMN: STICKY PRICE CARD */}
@@ -281,7 +366,7 @@ const PropertyDetails = () => {
               ₹{property.price?.toLocaleString("en-IN")}
             </h2>
 
-            {!inquiry ? (
+            {!inquiry && !isSold ? (
               <button
                 onClick={() => setShowInquiry(true)}
                 className="group w-full bg-slate-900 text-white font-bold py-5 rounded-2xl hover:bg-blue-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95"
@@ -289,12 +374,20 @@ const PropertyDetails = () => {
                 <FaEnvelope className="text-sm opacity-50 group-hover:opacity-100" />
                 Schedule Consultation
               </button>
+            ) : isSold ? (
+              <div className="text-center p-6 rounded-2xl bg-red-50 border border-red-100">
+                <p className="text-xs font-bold text-red-500 uppercase tracking-widest">
+                  Property Sold
+                </p>
+              </div>
             ) : (
               <div className="text-center p-6 rounded-2xl bg-slate-50 border border-slate-100">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Inquiry Submitted</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  Inquiry Submitted
+                </p>
               </div>
             )}
-            
+
             <p className="text-[10px] text-center text-slate-400 mt-6 font-medium leading-relaxed">
               By clicking "Schedule Consultation", you agree to our professional <span className="underline">Terms of Service</span> and <span className="underline">Privacy Guidelines</span>.
             </p>
@@ -307,7 +400,7 @@ const PropertyDetails = () => {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-white rounded-[40px] p-10 w-full max-w-lg shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-2 bg-blue-600" />
-            
+
             <h2 className="text-3xl font-light tracking-tight text-slate-900 mb-2">Inquire <span className="font-serif italic text-blue-600">Privately</span></h2>
             <p className="text-slate-400 text-sm mb-8">Our executive team will reach out within 24 business hours.</p>
 
@@ -369,9 +462,9 @@ const SpecItem = ({ icon, label, value }) => (
 );
 
 const FloatingInput = ({ name, placeholder, onChange }) => (
-  <input 
-    name={name} 
-    placeholder={placeholder} 
+  <input
+    name={name}
+    placeholder={placeholder}
     onChange={onChange}
     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:border-blue-600 focus:bg-white transition-all text-sm font-medium placeholder:text-slate-300 shadow-sm"
   />

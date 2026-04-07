@@ -16,6 +16,10 @@ const createInquiry = async (propertyId, data, user) => {
   try {
     const property = await propertyRepository.getPropertyById(propertyId);
 
+    if (property.status === "Sold") {
+  throw new AppError("This property is already sold", 400);
+}
+
     if (!property) {
       throw new AppError("Property not found", 404);
     }
@@ -46,7 +50,6 @@ const createInquiry = async (propertyId, data, user) => {
       agent,
     });
 
-    // ✅ CREATE MESSAGE
     const newMessage = await Message.create({
       inquiry: inquiry._id,
       sender: buyerId || seller,
@@ -54,15 +57,12 @@ const createInquiry = async (propertyId, data, user) => {
       text: data.message,
     });
 
-    // ✅ EMIT FULL MESSAGE
     const io = getIO();
+    io.to(inquiry._id.toString()).emit("new_message", {
+      ...newMessage.toObject(),
+      inquiry: newMessage.inquiry.toString(),
+    });
 
-io.to(inquiry._id.toString()).emit("new_message", {
-  ...newMessage.toObject(),
-  inquiry: newMessage.inquiry.toString(),
-});
-
-    // EMAIL
     try {
       const { subject, html } = inquiryTemplate({
         name: data.buyerName || "User",
@@ -107,6 +107,14 @@ const getBuyerInquiries = async (buyerId) => {
 };
 
 /* =========================================================
+   🔹 GET BUYER INQUIRY FOR PROPERTY
+========================================================= */
+
+const getBuyerInquiryForProperty = async (propertyId, buyerId) => {
+  return await repository.getBuyerInquiryForProperty(propertyId, buyerId);
+};
+
+/* =========================================================
    🔹 UPDATE LEAD STATUS
 ========================================================= */
 
@@ -115,11 +123,46 @@ const updateLeadStatus = async (inquiryId, status, agentId) => {
 
   if (!inquiry) throw new AppError("Inquiry not found", 404);
 
-  if (inquiry.agent && inquiry.agent._id.toString() !== agentId) {
+  // 🔐 Only assigned agent
+  if (!inquiry.agent) {
+    throw new AppError("No agent assigned to this inquiry", 400);
+  }
+
+  if (inquiry.agent._id.toString() !== agentId) {
     throw new AppError("Not authorized", 403);
   }
 
-  return await repository.updateLeadStatus(inquiryId, status);
+  // 🔁 Allowed transitions
+  const allowedTransitions = {
+    Pending: ["Seen"],
+    Seen: ["Responded"],
+    Responded: ["Visit Scheduled"],
+    "Visit Scheduled": ["Negotiation"],
+    Negotiation: ["Closed Won", "Closed Lost"],
+  };
+
+  if (
+    allowedTransitions[inquiry.status] &&
+    !allowedTransitions[inquiry.status].includes(status)
+  ) {
+    throw new AppError("Invalid status transition", 400);
+  }
+
+  const updateData = { status };
+
+// ✅ Set closedAt
+if (status === "Closed Won" || status === "Closed Lost") {
+  updateData.closedAt = new Date();
+}
+
+// 🔥 NEW: IF DEAL WON → MARK PROPERTY AS SOLD
+if (status === "Closed Won") {
+  await propertyRepository.updateProperty(inquiry.property._id, {
+    status: "Sold",
+  });
+}
+
+return await repository.updateLeadStatus(inquiryId, updateData);
 };
 
 /* =========================================================
@@ -131,7 +174,10 @@ const respondToInquiry = async (inquiryId, response, agentId) => {
 
   if (!inquiry) throw new AppError("Inquiry not found", 404);
 
-  // ✅ CREATE MESSAGE
+  if (!inquiry.agent || inquiry.agent._id.toString() !== agentId) {
+    throw new AppError("Not authorized", 403);
+  }
+
   const newMessage = await Message.create({
     inquiry: inquiryId,
     sender: agentId,
@@ -139,16 +185,18 @@ const respondToInquiry = async (inquiryId, response, agentId) => {
     text: response,
   });
 
-  // ✅ EMIT FULL MESSAGE
   const io = getIO();
   io.to(inquiryId.toString()).emit("new_message", {
-  ...newMessage.toObject(),
-  inquiry: newMessage.inquiry.toString(),
-});
+    ...newMessage.toObject(),
+    inquiry: newMessage.inquiry.toString(),
+  });
 
-  await repository.updateLeadStatus(inquiryId, "Responded");
+  await repository.updateLeadStatus(inquiryId, {
+    status: "Responded",
+    respondedAt: new Date(),
+    responseBy: "Agent",
+  });
 
-  // EMAIL
   try {
     const { subject, html } = agentResponseTemplate({
       name: inquiry.buyerName,
@@ -188,34 +236,35 @@ const getInquiryMessages = async (inquiryId, userId) => {
 };
 
 /* =========================================================
-   🔹 SEND MESSAGE (BUYER CHAT)
+   🔹 SEND MESSAGE
 ========================================================= */
 
 const sendMessage = async (inquiryId, text, userId) => {
-  const inquiry = await repository.getInquiryById(inquiryId);
+  const inquiry = await inquiryRepository.getInquiryById(inquiryId);
 
-  if (!inquiry) throw new AppError("Inquiry not found", 404);
+  if (!inquiry) {
+    throw new AppError("Inquiry not found", 404);
+  }
 
-  const isBuyer = inquiry.buyer?._id?.toString() === userId;
+  const isAgent = String(inquiry.agent?._id || inquiry.agent) === String(userId);
 
-  // ✅ CREATE MESSAGE
-  const newMessage = await Message.create({
+  // 🔥 IF AGENT SENDING FIRST RESPONSE → UPDATE STATUS
+  if (isAgent && inquiry.status === "Pending") {
+    inquiry.status = "Responded";
+    inquiry.respondedAt = new Date();
+    inquiry.responseBy = "Agent";
+  }
+
+  // save message (your existing logic)
+  const message = await messageRepository.createMessage({
     inquiry: inquiryId,
     sender: userId,
-    senderRole: isBuyer ? "Buyer" : "Agent",
-    text,
+    text
   });
 
-  console.log("🚀 EMITTING MESSAGE:", newMessage);
+  await inquiry.save();
 
-  // ✅ EMIT FULL MESSAGE
-  const io = getIO();
-  io.to(inquiryId.toString()).emit("new_message", {
-  ...newMessage.toObject(),
-  inquiry: newMessage.inquiry.toString(),
-});
-
-  return newMessage;
+  return message;
 };
 
 /* =========================================================
@@ -223,17 +272,38 @@ const sendMessage = async (inquiryId, text, userId) => {
 ========================================================= */
 
 const scheduleVisit = async (inquiryId, visitDate, visitTime, agentId) => {
+  const inquiry = await repository.getInquiryById(inquiryId);
+
+  if (!inquiry) throw new AppError("Inquiry not found", 404);
+
+  if (!inquiry.agent) {
+    throw new AppError("No agent assigned to this inquiry", 400);
+  }
+
+  if (inquiry.agent.toString() !== agentId) {
+    throw new AppError("Not authorized", 403);
+  }
+
+  const selectedDateTime = new Date(`${visitDate}T${visitTime}`);
+  if (selectedDateTime < new Date()) {
+    throw new AppError("Cannot schedule visit in the past", 400);
+  }
+
   const updatedInquiry = await repository.updateVisitSchedule(
     inquiryId,
     visitDate,
     visitTime
   );
 
+  await repository.updateLeadStatus(inquiryId, {
+    status: "Visit Scheduled",
+  });
+
   try {
     const { subject, html } = visitTemplate({
       name: updatedInquiry.buyerName,
       propertyTitle: updatedInquiry.property?.title,
-      date: visitDate,
+      date: new Date(visitDate).toLocaleDateString(),
       time: visitTime,
     });
 
@@ -253,6 +323,7 @@ module.exports = {
   createInquiry,
   getAgentLeads,
   getBuyerInquiries,
+  getBuyerInquiryForProperty,
   updateLeadStatus,
   respondToInquiry,
   getInquiryMessages,

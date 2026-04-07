@@ -76,10 +76,16 @@ const inquirySchema = new mongoose.Schema(
         "Responded",
         "Visit Scheduled",
         "Negotiation",
-        "Closed"
+        "Closed Won",
+        "Closed Lost"
       ],
       default: "Pending",
       index: true,
+    },
+
+    closedAt: {
+      type: Date,
+      default: null,
     },
 
     /* 🔹 Visit Scheduling */

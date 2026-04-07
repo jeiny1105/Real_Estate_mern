@@ -52,7 +52,7 @@ const getAgentLeads = async (agentId) => {
 };
 
 /* =========================================================
-   🔥 NEW — GET BUYER INQUIRIES
+   🔹 GET BUYER INQUIRIES
 ========================================================= */
 const getBuyerInquiries = async (buyerId) => {
   return await Inquiry.find({
@@ -65,14 +65,31 @@ const getBuyerInquiries = async (buyerId) => {
 };
 
 /* =========================================================
-   🔹 UPDATE LEAD STATUS
+   🔹 GET BUYER INQUIRY FOR PROPERTY
 ========================================================= */
-const updateLeadStatus = async (inquiryId, status) => {
+
+const getBuyerInquiryForProperty = async (propertyId, buyerId) => {
+  return await Inquiry.findOne({
+    property: propertyId,
+    buyer: buyerId,
+    isArchived: false,
+  })
+    .populate("property", "title price location")
+    .populate("agent", "name email");
+};
+
+/* =========================================================
+   🔹 UPDATE LEAD STATUS (UPDATED 🔥)
+========================================================= */
+const updateLeadStatus = async (inquiryId, updateData) => {
   return await Inquiry.findByIdAndUpdate(
     inquiryId,
-    { status },
+    updateData,
     { new: true }
-  );
+  )
+    .populate("property", "title price location")
+    .populate("buyer", "name email")
+    .populate("agent", "name email");
 };
 
 /* =========================================================
@@ -105,12 +122,14 @@ const updateVisitSchedule = async (inquiryId, visitDate, visitTime) => {
 
   await inquiry.save();
 
-  return await Inquiry.findById(inquiryId).populate("property");
+  return await Inquiry.findById(inquiryId)
+    .populate("property", "title price location")
+    .populate("buyer", "name email")
+    .populate("agent", "name email");
 };
 
 /* =========================================================
-   🔥 OPTIONAL — VALIDATE INQUIRY ACCESS
-   (useful for chat security later)
+   🔹 VALIDATE INQUIRY ACCESS
 ========================================================= */
 const getInquiryForUser = async (inquiryId, userId) => {
   return await Inquiry.findOne({
@@ -128,14 +147,10 @@ module.exports = {
   findDuplicateInquiry,
   getInquiryById,
   getAgentLeads,
-
-  // ✅ NEW
   getBuyerInquiries,
-
+  getBuyerInquiryForProperty,
   updateLeadStatus,
   respondToInquiry,
   updateVisitSchedule,
-
-  // optional (future use)
   getInquiryForUser,
 };

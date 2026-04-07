@@ -8,7 +8,8 @@ const stages = [
   "Responded",
   "Visit Scheduled",
   "Negotiation",
-  "Closed"
+  "Closed Won",
+  "Closed Lost"
 ];
 
 const AgentLeads = () => {
@@ -36,7 +37,8 @@ const AgentLeads = () => {
     Responded: "bg-green-600",
     "Visit Scheduled": "bg-indigo-600",
     Negotiation: "bg-yellow-500",
-    Closed: "bg-red-600"
+    "Closed Won": "bg-green-700",
+    "Closed Lost": "bg-red-700"
   };
 
   /* ================= FETCH ================= */
@@ -69,10 +71,8 @@ const AgentLeads = () => {
 
   const updateStatus = async (id, status) => {
     try {
-      if (status === "Closed") {
-        const confirmClose = window.confirm("Are you sure?");
-        if (!confirmClose) return;
-      }
+      const confirm = window.confirm(`Change status to "${status}"?`);
+      if (!confirm) return;
 
       setUpdating(id);
 
@@ -107,8 +107,6 @@ const AgentLeads = () => {
       );
 
       setResponseMessage("");
-
-      // ❌ No manual push (socket will handle)
     } catch (err) {
       console.error("Response failed", err);
     } finally {
@@ -172,11 +170,10 @@ const AgentLeads = () => {
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            className={`px-4 py-2 rounded text-sm ${
-              filter === tab
+            className={`px-4 py-2 rounded text-sm ${filter === tab
                 ? "bg-purple-600 text-white"
                 : "bg-gray-200"
-            }`}
+              }`}
           >
             {tab}
           </button>
@@ -195,7 +192,7 @@ const AgentLeads = () => {
               <th className="p-4 text-left">Message</th>
               <th className="p-4 text-left">Pipeline</th>
               <th className="p-4 text-left">Status</th>
-              <th className="p-4 text-left">Date</th>
+              <th className="p-4 text-left">Visit</th>
               <th className="p-4 text-left">Actions</th>
             </tr>
           </thead>
@@ -233,14 +230,20 @@ const AgentLeads = () => {
                     ))}
                   </td>
 
-                  <td className="p-4">
-                    <span className={`px-2 py-1 text-white text-xs rounded ${statusColors[lead.status]}`}>
+                  <td>
+                    <span className="whitespace-nowrap px-2 py-1 rounded text-xs font-semibold">
                       {lead.status}
                     </span>
                   </td>
 
+                  {/* 🔥 Visit Column */}
                   <td className="p-4 text-xs">
-                    {new Date(lead.createdAt).toLocaleDateString()}
+                    {lead.visitDate && (
+                      <>
+                        {new Date(lead.visitDate).toLocaleDateString()} <br />
+                        {lead.visitTime}
+                      </>
+                    )}
                   </td>
 
                   <td className="p-4 flex gap-2 flex-wrap">
@@ -254,6 +257,7 @@ const AgentLeads = () => {
                     </button>
 
                     <button
+                      disabled={lead.status !== "Seen"}
                       onClick={() => openResponseModal(lead)}
                       className="px-2 py-1 bg-green-600 text-white text-xs rounded"
                     >
@@ -261,6 +265,7 @@ const AgentLeads = () => {
                     </button>
 
                     <button
+                      disabled={lead.status !== "Responded"}
                       onClick={() => openVisitModal(lead)}
                       className="px-2 py-1 bg-indigo-600 text-white text-xs rounded"
                     >
@@ -268,10 +273,27 @@ const AgentLeads = () => {
                     </button>
 
                     <button
-                      onClick={() => updateStatus(lead._id, "Closed")}
-                      className="px-2 py-1 bg-red-600 text-white text-xs rounded"
+                      disabled={lead.status !== "Visit Scheduled"}
+                      onClick={() => updateStatus(lead._id, "Negotiation")}
+                      className="px-2 py-1 bg-yellow-500 text-white text-xs rounded"
                     >
-                      Close
+                      Negotiation
+                    </button>
+
+                    <button
+                      disabled={lead.status !== "Negotiation"}
+                      onClick={() => updateStatus(lead._id, "Closed Won")}
+                      className="px-2 py-1 bg-green-700 text-white text-xs rounded"
+                    >
+                      Won
+                    </button>
+
+                    <button
+                      disabled={lead.status !== "Negotiation"}
+                      onClick={() => updateStatus(lead._id, "Closed Lost")}
+                      className="px-2 py-1 bg-red-700 text-white text-xs rounded"
+                    >
+                      Lost
                     </button>
 
                   </td>
@@ -306,8 +328,17 @@ const AgentLeads = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
           <div className="bg-white p-6 rounded w-96">
 
+            <h3 className="text-lg font-semibold mb-2">
+              Schedule Visit
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-3">
+              {selectedLead?.buyerName} → {selectedLead?.property?.title}
+            </p>
+
             <input
               type="date"
+              min={new Date().toISOString().split("T")[0]}
               value={visitDate}
               onChange={(e) => setVisitDate(e.target.value)}
               className="w-full border p-2 mb-3"
