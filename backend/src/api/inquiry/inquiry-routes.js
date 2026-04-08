@@ -77,6 +77,12 @@ router.patch(
 
 router.get("/buyer/inquiries", inquiryController.getBuyerInquiries);
 
+
+router.get(
+  "/buyer/properties",
+  inquiryController.getBuyerOwnedProperties
+);
+
 router.get(
   "/properties/:id/my",
   validateRequest(idParamSchema, "params"),

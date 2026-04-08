@@ -1,48 +1,36 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  getMyProfile,
-  updateMyProfile,
-} = require("./user-controller");
+const { getMyProfile, updateMyProfile } = require("./user-controller");
 
 const authenticate = require("../../middlewares/auth-middleware");
-const authorizePermission = require("../../middlewares/permission-middleware");
-const validateRequest = require("../../middlewares/validateRequest-middleware");
+const authorize = require("../../middlewares/permission-middleware");
+const validate = require("../../middlewares/validateRequest-middleware");
+const upload = require("../../middlewares/upload-middleware");
 
 const PERMISSIONS = require("../../config/permissions");
+const { updateProfileSchema } = require("../../validations/user-validation");
 
-const {
-  updateProfileSchema,
-} = require("../../validations/user-validation");
-
-/**
- * Admin test
- */
+/* ================= ADMIN ================= */
 router.get(
   "/admin-test",
   authenticate,
-  authorizePermission(PERMISSIONS.USERS_READ),
-  (req, res) => {
+  authorize(PERMISSIONS.USERS_READ),
+  (req, res) =>
     res.status(200).json({
       success: true,
       message: "Welcome Admin 👑",
-    });
-  }
+    })
 );
 
-/**
- * Get profile
- */
+/* ================= PROFILE ================= */
 router.get("/me", authenticate, getMyProfile);
 
-/**
- * ✅ CLEAN UPDATE PROFILE
- */
 router.patch(
   "/me",
   authenticate,
-  validateRequest(updateProfileSchema),
+  upload.single("profileImage"), 
+  validate(updateProfileSchema), 
   updateMyProfile
 );
 

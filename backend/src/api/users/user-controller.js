@@ -15,6 +15,11 @@ const getMyProfile = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc   Update logged-in user's profile
+ * @route  PATCH /api/v1/users/me
+ * @access Protected
+ */
 const updateMyProfile = asyncHandler(async (req, res) => {
   const updatedUser = await userService.updateMe(
     req.user.id,
@@ -31,5 +36,5 @@ const updateMyProfile = asyncHandler(async (req, res) => {
 
 module.exports = {
   getMyProfile,
-  updateMyProfile, // ✅ ADD THIS
+  updateMyProfile,
 };

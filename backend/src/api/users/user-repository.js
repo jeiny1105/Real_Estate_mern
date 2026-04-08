@@ -30,10 +30,19 @@ const findByEmail = async (email) => {
 };
 
 /**
- * Find user by ID
+ * 🔥 Find user by ID (NO password)
  */
 const findById = async (userId) => {
-  return await User.findById(userId);
+  return await User.findById(userId).select(
+    "-password -resetToken -resetTokenExpire"
+  );
+};
+
+/**
+ * 🔥 Find user by ID WITH password (for update / security ops)
+ */
+const findByIdWithPassword = async (userId) => {
+  return await User.findById(userId).select("+password");
 };
 
 /**
@@ -62,6 +71,7 @@ module.exports = {
   findUserByEmail,
   findByEmail,
   findById,
+  findByIdWithPassword, 
   updateUserStatus,
   createUser,
 };

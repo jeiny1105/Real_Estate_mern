@@ -139,17 +139,28 @@ const PropertyDetails = () => {
     </div>
   );
 
+
   if (!property) return (
     <div className="min-h-screen bg-white flex items-center justify-center text-slate-500 font-medium">
       PROPERTY NOT FOUND
     </div>
   );
 
+   const isSold = property.status === "Sold";
+  const isOwner = inquiry?.status === "Closed Won";
+
+  if (!checkingInquiry && isSold && !isOwner) {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-slate-500 pt-32">
+      This property is no longer available.
+    </div>
+  );
+}
+
   const isResidential = ["Apartment", "Villa", "Cottage", "House"].includes(property.propertyType);
   const isPlot = property.propertyType === "Plot";
   const isCommercial = property.propertyType === "Commercial";
 
-  const isSold = property.status === "Sold";
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-slate-900 font-sans antialiased pb-24">

@@ -22,6 +22,7 @@ import Notifications from "./pages/buyer/Notifications";
 import Profile from "./pages/buyer/BuyerProfile";
 import BuyerInquiries from "./pages/buyer/BuyerInquiries";
 import BuyerChat from "./pages/buyer/BuyerChat";
+import MyProperties from "./pages/buyer/MyProperties";
 
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
@@ -59,14 +60,14 @@ import RoleRoute from "./components/auth/RoleRoutes";
 function App() {
 
   useEffect(() => {
-  socket.on("connect", () => {
-    console.log("✅ Connected to socket:", socket.id);
-  });
+    socket.on("connect", () => {
+      console.log("✅ Connected to socket:", socket.id);
+    });
 
-  return () => {
-    socket.disconnect();
-  };
-}, []);
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   return (
     <Router>
@@ -156,6 +157,17 @@ function App() {
               <ProtectedRoute>
                 <RoleRoute allowedRoles={["Buyer"]}>
                   <BuyerChat />
+                </RoleRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/buyer/properties"
+            element={
+              <ProtectedRoute>
+                <RoleRoute allowedRoles={["Buyer"]}>
+                  <MyProperties />
                 </RoleRoute>
               </ProtectedRoute>
             }

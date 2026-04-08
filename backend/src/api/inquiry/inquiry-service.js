@@ -115,6 +115,14 @@ const getBuyerInquiryForProperty = async (propertyId, buyerId) => {
 };
 
 /* =========================================================
+   🔹 GET BUYER OWNED PROPERTIES 
+========================================================= */
+
+const getBuyerOwnedProperties = async (buyerId) => {
+  return await repository.getBuyerOwnedProperties(buyerId);
+};
+
+/* =========================================================
    🔹 UPDATE LEAD STATUS
 ========================================================= */
 
@@ -280,7 +288,7 @@ const scheduleVisit = async (inquiryId, visitDate, visitTime, agentId) => {
     throw new AppError("No agent assigned to this inquiry", 400);
   }
 
-  if (inquiry.agent.toString() !== agentId) {
+  if (inquiry.agent._id.toString() !== agentId) {
     throw new AppError("Not authorized", 403);
   }
 
@@ -324,6 +332,7 @@ module.exports = {
   getAgentLeads,
   getBuyerInquiries,
   getBuyerInquiryForProperty,
+  getBuyerOwnedProperties,
   updateLeadStatus,
   respondToInquiry,
   getInquiryMessages,

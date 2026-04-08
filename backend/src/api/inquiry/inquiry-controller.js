@@ -64,6 +64,23 @@ const getBuyerInquiryForProperty = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
+   🔹 GET BUYER OWNED PROPERTIES 
+========================================================= */
+const getBuyerOwnedProperties = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const data = await inquiryService.getBuyerOwnedProperties(req.user.id);
+
+  res.status(200).json({
+    success: true,
+    results: data.length,
+    data,
+  });
+});
+
+/* =========================================================
    🔹 GET AGENT LEADS
 ========================================================= */
 const getAgentLeads = asyncHandler(async (req, res) => {
@@ -197,6 +214,7 @@ module.exports = {
   createInquiry,
   getBuyerInquiries,
   getBuyerInquiryForProperty,
+  getBuyerOwnedProperties,
   getAgentLeads,
   updateLeadStatus,
   respondToInquiry,

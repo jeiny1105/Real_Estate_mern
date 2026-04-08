@@ -1,7 +1,10 @@
 const bcrypt = require("bcryptjs");
 const userRepo = require("./user-repository");
 
-// ---------------- GET ME ----------------
+const Inquiry = require("../models/inquiry-model");
+const Wishlist = require("../models/wishlist-model");
+
+/* ================= GET ME ================= */
 const getMe = async (userId) => {
   const user = await userRepo.findById(userId);
 
@@ -9,6 +12,26 @@ const getMe = async (userId) => {
     const err = new Error("User not found");
     err.statusCode = 404;
     throw err;
+  }
+
+  let stats = null;
+
+  /* 🔥 BUYER STATS */
+  if (user.role === "Buyer") {
+    const inquiries = await Inquiry.countDocuments({ buyer: userId });
+
+    const visits = await Inquiry.countDocuments({
+      buyer: userId,
+      status: "Visit Scheduled",
+    });
+
+    const wishlist = await Wishlist.countDocuments({ user: userId });
+
+    stats = {
+      inquiries,
+      visits,
+      wishlist,
+    };
   }
 
   return {
@@ -20,12 +43,14 @@ const getMe = async (userId) => {
     status: user.status,
     profileImage: user.profileImage || null,
     subscription: user.subscription || null,
+    stats, // ✅ ADD THIS
   };
 };
 
-// ---------------- UPDATE PROFILE ----------------
+/* ================= UPDATE PROFILE ================= */
 const updateMe = async (userId, data, file) => {
-  const user = await userRepo.findById(userId);
+  /* 🔥 IMPORTANT FIX: USE PASSWORD VERSION */
+  const user = await userRepo.findByIdWithPassword(userId);
 
   if (!user) {
     const err = new Error("User not found");
@@ -46,6 +71,7 @@ const updateMe = async (userId, data, file) => {
     postalCode,
   } = data;
 
+  /* 🔹 BASIC FIELDS */
   if (name) user.name = name;
   if (email) user.email = email;
   if (phone) user.phone = phone;
@@ -54,8 +80,14 @@ const updateMe = async (userId, data, file) => {
   if (state) user.state = state;
   if (postalCode) user.postalCode = postalCode;
 
-  // Password change
-  if (currentPassword && newPassword && confirmPassword) {
+  /* 🔥 SAFE PASSWORD CHANGE */
+  if (currentPassword || newPassword || confirmPassword) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      const err = new Error("All password fields are required");
+      err.statusCode = 400;
+      throw err;
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
@@ -65,7 +97,7 @@ const updateMe = async (userId, data, file) => {
     }
 
     if (newPassword !== confirmPassword) {
-      const err = new Error("New passwords do not match");
+      const err = new Error("Passwords do not match");
       err.statusCode = 400;
       throw err;
     }
@@ -73,7 +105,7 @@ const updateMe = async (userId, data, file) => {
     user.password = await bcrypt.hash(newPassword, 10);
   }
 
-  // Profile Image
+  /* 🔹 PROFILE IMAGE */
   if (file) {
     user.profileImage = `/uploads/${file.filename}`;
   }

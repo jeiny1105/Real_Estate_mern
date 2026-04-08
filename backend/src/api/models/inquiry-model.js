@@ -77,7 +77,7 @@ const inquirySchema = new mongoose.Schema(
         "Visit Scheduled",
         "Negotiation",
         "Closed Won",
-        "Closed Lost"
+        "Closed Lost",
       ],
       default: "Pending",
       index: true,
@@ -113,7 +113,7 @@ const inquirySchema = new mongoose.Schema(
       default: null,
     },
 
-    /* 🔹 Inquiry Source (analytics later) */
+    /* 🔹 Inquiry Source */
 
     source: {
       type: String,
@@ -121,11 +121,41 @@ const inquirySchema = new mongoose.Schema(
       default: "Marketplace",
     },
 
-    /* 🔹 Archival (for agent lead cleanup) */
+    /* 🔹 Archival */
 
     isArchived: {
       type: Boolean,
       default: false,
+    },
+
+    /* =========================================================
+       🔥 Revenue Tracking (NEW - CORRECT PLACE)
+    ========================================================= */
+
+    dealAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    commission: {
+      type: Number,
+      default: 0,
+    },
+
+    platformFee: {
+      type: Number,
+      default: 0,
+    },
+
+    agentEarning: {
+      type: Number,
+      default: 0,
+    },
+
+    payoutStatus: {
+      type: String,
+      enum: ["Pending", "Paid"],
+      default: "Pending",
     },
   },
   {
@@ -133,22 +163,19 @@ const inquirySchema = new mongoose.Schema(
   }
 );
 
-/* 🔹 Prevent duplicate inquiries from same buyer on same property */
-
+/* 🔹 Prevent duplicate inquiries */
 inquirySchema.index(
   { property: 1, buyer: 1 },
   {
     unique: true,
-    partialFilterExpression: { buyer: { $type: "objectId" } }
+    partialFilterExpression: { buyer: { $type: "objectId" } },
   }
 );
 
-/* 🔹 Agent dashboard query optimization */
-
+/* 🔹 Agent dashboard optimization */
 inquirySchema.index({ agent: 1, status: 1 });
 
 /* 🔹 Seller dashboard optimization */
-
 inquirySchema.index({ seller: 1, status: 1 });
 
 module.exports = mongoose.model("Inquiry", inquirySchema);

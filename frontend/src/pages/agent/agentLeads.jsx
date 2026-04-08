@@ -171,8 +171,8 @@ const AgentLeads = () => {
             key={tab}
             onClick={() => setFilter(tab)}
             className={`px-4 py-2 rounded text-sm ${filter === tab
-                ? "bg-purple-600 text-white"
-                : "bg-gray-200"
+              ? "bg-purple-600 text-white"
+              : "bg-gray-200"
               }`}
           >
             {tab}
@@ -280,21 +280,34 @@ const AgentLeads = () => {
                       Negotiation
                     </button>
 
-                    <button
-                      disabled={lead.status !== "Negotiation"}
-                      onClick={() => updateStatus(lead._id, "Closed Won")}
-                      className="px-2 py-1 bg-green-700 text-white text-xs rounded"
-                    >
-                      Won
-                    </button>
+                    {/* ✅ SHOW ONLY WHEN NOT CLOSED */}
+                    {!["Closed Won", "Closed Lost"].includes(lead.status) && (
+                      <>
+                        <button
+                          disabled={lead.status !== "Negotiation"}
+                          onClick={() => updateStatus(lead._id, "Closed Won")}
+                          className="px-2 py-1 bg-green-700 text-white text-xs rounded"
+                        >
+                          Won
+                        </button>
 
-                    <button
-                      disabled={lead.status !== "Negotiation"}
-                      onClick={() => updateStatus(lead._id, "Closed Lost")}
-                      className="px-2 py-1 bg-red-700 text-white text-xs rounded"
-                    >
-                      Lost
-                    </button>
+                        <button
+                          disabled={lead.status !== "Negotiation"}
+                          onClick={() => updateStatus(lead._id, "Closed Lost")}
+                          className="px-2 py-1 bg-red-700 text-white text-xs rounded"
+                        >
+                          Lost
+                        </button>
+                      </>
+                    )}
+
+                    {lead.status === "Closed Won" && (
+  <span className="text-green-600 text-xs font-bold">Deal Won</span>
+)}
+
+{lead.status === "Closed Lost" && (
+  <span className="text-red-500 text-xs font-bold">Deal Lost</span>
+)}
 
                   </td>
 

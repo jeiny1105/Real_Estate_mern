@@ -59,7 +59,7 @@ const getBuyerInquiries = async (buyerId) => {
     buyer: buyerId,
     isArchived: false
   })
-    .populate("property", "title price location")
+    .populate("property", "title price location images")
     .populate("agent", "name email")
     .sort({ createdAt: -1 });
 };
@@ -76,6 +76,19 @@ const getBuyerInquiryForProperty = async (propertyId, buyerId) => {
   })
     .populate("property", "title price location")
     .populate("agent", "name email");
+};
+
+/* =========================================================
+   🔹 GET BUYER OWNED PROPERTIES (NEW 🔥)
+========================================================= */
+const getBuyerOwnedProperties = async (buyerId) => {
+  return await Inquiry.find({
+    buyer: buyerId,
+    status: "Closed Won",
+    isArchived: false,
+  })
+    .populate("property", "title price location images status")
+    .sort({ updatedAt: -1 });
 };
 
 /* =========================================================
@@ -149,6 +162,7 @@ module.exports = {
   getAgentLeads,
   getBuyerInquiries,
   getBuyerInquiryForProperty,
+  getBuyerOwnedProperties,
   updateLeadStatus,
   respondToInquiry,
   updateVisitSchedule,
