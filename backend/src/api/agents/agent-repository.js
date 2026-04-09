@@ -1,5 +1,10 @@
 const Agent = require("../models/agent-model");
 const Property = require("../models/property-model");
+const AppError = require("../../utils/app-error");
+
+/* =========================================================
+   🧑‍💼 CREATE / FIND
+========================================================= */
 
 /* Create agent */
 const createAgent = async (data) => {
@@ -16,23 +21,48 @@ const findAgentByUserId = async (userId) => {
   return await Agent.findOne({ user: userId });
 };
 
-/* 🔹 Admin: Get all agents */
+/* 🔥 NEW: Get agent profile (for /agents/me) */
+const getMyAgentProfile = async (userId) => {
+  const agent = await Agent.findOne({ user: userId });
+
+  if (!agent) {
+    throw new AppError("Agent profile not found", 404);
+  }
+
+  return agent;
+};
+
+/* =========================================================
+   🛠 ADMIN
+========================================================= */
+
+/* Get all agents */
 const getAllAgents = async () => {
   return await Agent.find()
     .populate("user", "name email phone")
     .sort({ createdAt: -1 });
 };
 
-/* 🔹 Admin: Update agent status */
+/* Update agent status */
 const updateAgentStatus = async (agentId, status) => {
-  return await Agent.findByIdAndUpdate(
+  const agent = await Agent.findByIdAndUpdate(
     agentId,
     { status },
     { new: true }
   );
+
+  if (!agent) {
+    throw new AppError("Agent not found", 404);
+  }
+
+  return agent;
 };
 
-/* Find properties assigned to agent */
+/* =========================================================
+   🏠 PROPERTIES
+========================================================= */
+
+/* Get assigned properties */
 const findAssignedProperties = async (agentUserId) => {
   return await Property.find({
     agent: agentUserId,
@@ -42,28 +72,8 @@ const findAssignedProperties = async (agentUserId) => {
     .sort({ createdAt: -1 });
 };
 
-/* ❌ Agent rejects property */
-const rejectProperty = async (propertyId, agentUserId, reason) => {
-
-  const property = await Property.findOneAndUpdate(
-    {
-      _id: propertyId,
-      agent: agentUserId, // ensure property belongs to agent
-      isDeleted: false,
-    },
-    {
-      agentDecision: "Rejected",
-      agentRejectReason: reason || null,
-    },
-    { new: true }
-  );
-
-  return property;
-};
-
 /* Approve property */
 const approveProperty = async (propertyId, agentUserId) => {
-
   const property = await Property.findOneAndUpdate(
     {
       _id: propertyId,
@@ -76,10 +86,36 @@ const approveProperty = async (propertyId, agentUserId) => {
     { new: true }
   );
 
+  if (!property) {
+    throw new AppError("Property not found or not assigned to this agent", 404);
+  }
+
   return property;
 };
 
-/* 🔹 Get rejected properties for agent */
+/* Reject property */
+const rejectProperty = async (propertyId, agentUserId, reason) => {
+  const property = await Property.findOneAndUpdate(
+    {
+      _id: propertyId,
+      agent: agentUserId,
+      isDeleted: false,
+    },
+    {
+      agentDecision: "Rejected",
+      agentRejectReason: reason || null,
+    },
+    { new: true }
+  );
+
+  if (!property) {
+    throw new AppError("Property not found or not assigned to this agent", 404);
+  }
+
+  return property;
+};
+
+/* Get rejected properties */
 const findRejectedProperties = async (agentUserId) => {
   return await Property.find({
     agent: agentUserId,
@@ -94,10 +130,11 @@ module.exports = {
   createAgent,
   findByLicenseNumber,
   findAgentByUserId,
+  getMyAgentProfile, 
   getAllAgents,
   updateAgentStatus,
   findAssignedProperties,
-  rejectProperty,
   approveProperty,
+  rejectProperty,
   findRejectedProperties,
 };

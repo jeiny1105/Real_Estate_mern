@@ -18,7 +18,9 @@ const createInquirySchema = Joi.object({
   }),
 });
 
-/* 🔹 Update Status */
+/* =========================================================
+   🔹 Update Status (UPDATED 🔥)
+========================================================= */
 const updateStatusSchema = Joi.object({
   status: Joi.string()
     .valid(
@@ -31,6 +33,19 @@ const updateStatusSchema = Joi.object({
       "Closed Lost"
     )
     .required(),
+
+  dealAmount: Joi.when("status", {
+    is: "Closed Won",
+    then: Joi.number()
+      .positive()
+      .required()
+      .messages({
+        "any.required": "Deal amount is required when closing deal",
+        "number.base": "Deal amount must be a number",
+        "number.positive": "Deal amount must be greater than 0",
+      }),
+    otherwise: Joi.forbidden(),
+  }),
 });
 
 /* 🔹 Respond */
@@ -48,11 +63,11 @@ const scheduleVisitSchema = Joi.object({
     }),
 
   visitTime: Joi.string()
-  .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/) // HH:mm format
-  .required()
-  .messages({
-    "string.pattern.base": "Time must be in HH:mm format",
-  }),
+    .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/) // HH:mm
+    .required()
+    .messages({
+      "string.pattern.base": "Time must be in HH:mm format",
+    }),
 });
 
 /* 🔹 Send Message */

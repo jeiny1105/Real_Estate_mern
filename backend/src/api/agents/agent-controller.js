@@ -2,8 +2,11 @@ const authService = require("../auth/auth-service");
 const agentService = require("./agent-service");
 const asyncHandler = require("../../utils/asyncHandler");
 
+/* =========================================================
+   🧑‍💼 REGISTER AGENT
+========================================================= */
+
 /**
- * 🧑‍💼 Register Agent (after successful payment)
  * @route POST /api/v1/auth/register/agent
  */
 const registerAgent = asyncHandler(async (req, res) => {
@@ -40,8 +43,29 @@ const registerAgent = asyncHandler(async (req, res) => {
   });
 });
 
+/* =========================================================
+   👤 AGENT PROFILE
+========================================================= */
+
 /**
- * 🏠 Get properties assigned to logged-in agent
+ * 🧑‍💼 Get logged-in agent profile
+ * @route GET /api/v1/agent/me
+ */
+const getMyProfile = asyncHandler(async (req, res) => {
+  const agent = await agentService.getMyAgentProfile(req.user.id);
+
+  res.status(200).json({
+    success: true,
+    data: agent,
+  });
+});
+
+/* =========================================================
+   🏠 PROPERTIES
+========================================================= */
+
+/**
+ * 🏠 Get assigned properties
  * @route GET /api/v1/agent/properties
  */
 const getAssignedProperties = asyncHandler(async (req, res) => {
@@ -50,12 +74,13 @@ const getAssignedProperties = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
+    results: properties.length,
     data: properties,
   });
 });
 
 /**
- * ✅ Agent approves property
+ * ✅ Approve property
  * @route PATCH /api/v1/agent/properties/:propertyId/approve
  */
 const approveProperty = asyncHandler(async (req, res) => {
@@ -74,7 +99,7 @@ const approveProperty = asyncHandler(async (req, res) => {
 });
 
 /**
- * ❌ Agent rejects a property
+ * ❌ Reject property
  * @route PATCH /api/v1/agent/properties/:propertyId/reject
  */
 const rejectProperty = asyncHandler(async (req, res) => {
@@ -95,7 +120,7 @@ const rejectProperty = asyncHandler(async (req, res) => {
 });
 
 /**
- * ❌ Get rejected properties for logged-in agent
+ * ❌ Get rejected properties
  * @route GET /api/v1/agent/properties/rejected
  */
 const getRejectedProperties = asyncHandler(async (req, res) => {
@@ -104,12 +129,14 @@ const getRejectedProperties = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
+    results: properties.length,
     data: properties,
   });
 });
 
 module.exports = {
   registerAgent,
+  getMyProfile,
   getAssignedProperties,
   approveProperty,
   rejectProperty,

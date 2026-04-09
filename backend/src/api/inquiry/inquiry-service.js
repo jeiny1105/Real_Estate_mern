@@ -17,8 +17,8 @@ const createInquiry = async (propertyId, data, user) => {
     const property = await propertyRepository.getPropertyById(propertyId);
 
     if (property.status === "Sold") {
-  throw new AppError("This property is already sold", 400);
-}
+      throw new AppError("This property is already sold", 400);
+    }
 
     if (!property) {
       throw new AppError("Property not found", 404);
@@ -123,10 +123,10 @@ const getBuyerOwnedProperties = async (buyerId) => {
 };
 
 /* =========================================================
-   🔹 UPDATE LEAD STATUS
+   🔹 UPDATE LEAD STATUS (UPDATED 🔥)
 ========================================================= */
 
-const updateLeadStatus = async (inquiryId, status, agentId) => {
+const updateLeadStatus = async (inquiryId, status, agentId, dealAmount) => {
   const inquiry = await repository.getInquiryById(inquiryId);
 
   if (!inquiry) throw new AppError("Inquiry not found", 404);
@@ -158,19 +158,54 @@ const updateLeadStatus = async (inquiryId, status, agentId) => {
 
   const updateData = { status };
 
-// ✅ Set closedAt
-if (status === "Closed Won" || status === "Closed Lost") {
-  updateData.closedAt = new Date();
-}
+  // ✅ Set closedAt
+  if (status === "Closed Won" || status === "Closed Lost") {
+    updateData.closedAt = new Date();
+  }
 
-// 🔥 NEW: IF DEAL WON → MARK PROPERTY AS SOLD
-if (status === "Closed Won") {
-  await propertyRepository.updateProperty(inquiry.property._id, {
-    status: "Sold",
-  });
-}
+  /* =========================================================
+     🔥 COMMISSION LOGIC (NEW)
+  ========================================================= */
 
-return await repository.updateLeadStatus(inquiryId, updateData);
+  if (status === "Closed Won") {
+    if (!dealAmount) {
+      throw new AppError("Deal amount is required", 400);
+    }
+
+    const property = inquiry.property;
+
+    let commission = 0;
+    let commissionPaidBy = null;
+
+    // 🏠 SALE
+    if (property.listingType === "Sale") {
+      commission = (dealAmount * 2) / 100;
+      commissionPaidBy = "Seller";
+    }
+
+    // 🏢 RENT
+    if (property.listingType === "Rent") {
+      commission = dealAmount; // 1 month rent
+      commissionPaidBy = "Buyer";
+    }
+
+    const agentEarning = commission * 0.7;
+    const platformFee = commission * 0.3;
+
+    // ✅ Update property status
+    await propertyRepository.updateProperty(property._id, {
+      status: "Sold",
+    });
+
+    // ✅ Save revenue data
+    updateData.dealAmount = dealAmount;
+    updateData.commission = commission;
+    updateData.agentEarning = agentEarning;
+    updateData.platformFee = platformFee;
+    updateData.commissionPaidBy = commissionPaidBy;
+  }
+
+  return await repository.updateLeadStatus(inquiryId, updateData);
 };
 
 /* =========================================================
@@ -256,14 +291,12 @@ const sendMessage = async (inquiryId, text, userId) => {
 
   const isAgent = String(inquiry.agent?._id || inquiry.agent) === String(userId);
 
-  // 🔥 IF AGENT SENDING FIRST RESPONSE → UPDATE STATUS
   if (isAgent && inquiry.status === "Pending") {
     inquiry.status = "Responded";
     inquiry.respondedAt = new Date();
     inquiry.responseBy = "Agent";
   }
 
-  // save message (your existing logic)
   const message = await messageRepository.createMessage({
     inquiry: inquiryId,
     sender: userId,

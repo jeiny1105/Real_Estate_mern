@@ -46,6 +46,7 @@ import AgentProperties from "./pages/agent/assignedProperties";
 import AgentSubscription from "./pages/agent/agentSubscription";
 import AgentPropertyReview from "./pages/agent/propertyReview";
 import AgentLeads from "./pages/agent/agentLeads";
+import AgentProfile from "./pages/agent/agentProfile";
 
 // Layouts
 import AdminLayout from "./components/layout/AdminLayout";
@@ -251,6 +252,7 @@ function App() {
           <Route path="properties/:id" element={<AgentPropertyReview />} />
           <Route path="leads" element={<AgentLeads />} />
           <Route path="subscription" element={<AgentSubscription />} />
+          <Route path="profile" element={<AgentProfile />} />
         </Route>
 
       </Routes>

@@ -152,6 +152,12 @@ const inquirySchema = new mongoose.Schema(
       default: 0,
     },
 
+    commissionPaidBy: {
+      type: String,
+      enum: ["Buyer", "Seller"],
+      default: null,
+    },
+
     payoutStatus: {
       type: String,
       enum: ["Pending", "Paid"],

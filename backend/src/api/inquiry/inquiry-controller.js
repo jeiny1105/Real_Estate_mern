@@ -96,11 +96,11 @@ const getAgentLeads = asyncHandler(async (req, res) => {
 });
 
 /* =========================================================
-   🔹 UPDATE LEAD STATUS
+   🔹 UPDATE LEAD STATUS (UPDATED 🔥)
 ========================================================= */
 const updateLeadStatus = asyncHandler(async (req, res) => {
   const inquiryId = req.params.id;
-  const { status } = req.body;
+  const { status, dealAmount } = req.body;
 
   if (!status) {
     throw new AppError("Status is required", 400);
@@ -109,7 +109,8 @@ const updateLeadStatus = asyncHandler(async (req, res) => {
   const updated = await inquiryService.updateLeadStatus(
     inquiryId,
     status,
-    req.user.id
+    req.user.id,
+    dealAmount // 🔥 NEW
   );
 
   res.status(200).json({

@@ -1,16 +1,17 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   FaTachometerAlt,
   FaHome,
   FaUserCircle,
   FaMoneyBillWave,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaUsers
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 
 const AgentSidebar = ({ isSubscriptionValid }) => {
-
   const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const linkStyle =
     "flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium";
@@ -22,10 +23,14 @@ const AgentSidebar = ({ isSubscriptionValid }) => {
   const lockedStyle =
     "opacity-40 cursor-not-allowed pointer-events-none";
 
+  const handleLockedClick = () => {
+    navigate("/agent/subscription");
+  };
+
   return (
     <div className="w-64 h-screen bg-slate-950 border-r border-white/10 p-6 fixed flex flex-col justify-between">
 
-      {/* Top Section */}
+      {/* Top */}
       <div>
 
         {/* Logo */}
@@ -45,9 +50,10 @@ const AgentSidebar = ({ isSubscriptionValid }) => {
             <FaTachometerAlt /> Dashboard
           </NavLink>
 
-          {/* Assigned Properties */}
+          {/* Properties */}
           <NavLink
-            to={isSubscriptionValid ? "/agent/properties" : "#"}
+            to="/agent/properties"
+            onClick={!isSubscriptionValid ? handleLockedClick : undefined}
             className={({ isActive }) =>
               `${linkStyle} ${isActive ? activeStyle : inactiveStyle}
               ${!isSubscriptionValid ? lockedStyle : ""}`
@@ -55,34 +61,31 @@ const AgentSidebar = ({ isSubscriptionValid }) => {
           >
             <FaHome />
             Assigned Properties
-
             {!isSubscriptionValid && (
-              <span className="ml-auto text-xs text-purple-400">
-                🔒
-              </span>
+              <span className="ml-auto text-xs text-purple-400">🔒</span>
             )}
           </NavLink>
 
           {/* Leads */}
           <NavLink
-            to={isSubscriptionValid ? "/agent/leads" : "#"}
+            to="/agent/leads"
+            onClick={!isSubscriptionValid ? handleLockedClick : undefined}
             className={({ isActive }) =>
               `${linkStyle} ${isActive ? activeStyle : inactiveStyle}
               ${!isSubscriptionValid ? lockedStyle : ""}`
             }
           >
+            <FaUsers />
             Leads
-
             {!isSubscriptionValid && (
-              <span className="ml-auto text-xs text-purple-400">
-                🔒
-              </span>
+              <span className="ml-auto text-xs text-purple-400">🔒</span>
             )}
           </NavLink>
 
           {/* Earnings */}
           <NavLink
-            to={isSubscriptionValid ? "/agent/earnings" : "#"}
+            to="/agent/earnings"
+            onClick={!isSubscriptionValid ? handleLockedClick : undefined}
             className={({ isActive }) =>
               `${linkStyle} ${isActive ? activeStyle : inactiveStyle}
               ${!isSubscriptionValid ? lockedStyle : ""}`
@@ -90,11 +93,8 @@ const AgentSidebar = ({ isSubscriptionValid }) => {
           >
             <FaMoneyBillWave />
             Earnings
-
             {!isSubscriptionValid && (
-              <span className="ml-auto text-xs text-purple-400">
-                🔒
-              </span>
+              <span className="ml-auto text-xs text-purple-400">🔒</span>
             )}
           </NavLink>
 
@@ -121,16 +121,14 @@ const AgentSidebar = ({ isSubscriptionValid }) => {
         </nav>
       </div>
 
-      {/* Bottom Section */}
+      {/* Bottom */}
       <div>
-
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all"
         >
           <FaSignOutAlt /> Logout
         </button>
-
       </div>
 
     </div>
